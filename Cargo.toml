@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/burncloud-node-contracts",
+    "crates/burncloud-hardware-probe",
+    "crates/burncloud-metrics-probe",
+]
+
+[package]
+name = "hardware-probe-whitebox"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "hardware-probe-whitebox"
+path = "main.rs"
+
+[dependencies]
+burncloud-hardware-probe = { path = "crates/burncloud-hardware-probe" }
+burncloud-metrics-probe = { path = "crates/burncloud-metrics-probe" }
+burncloud-node-contracts = { path = "crates/burncloud-node-contracts" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

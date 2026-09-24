@@ -1,0 +1,13 @@
+[package]
+name = "burncloud-metrics-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+burncloud-node-contracts = { path = "../burncloud-node-contracts" }
+tokio = { version = "1", features = ["fs", "process", "rt", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
