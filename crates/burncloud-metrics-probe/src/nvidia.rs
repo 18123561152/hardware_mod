@@ -1,4 +1,4 @@
-use burncloud_node_contracts::AcceleratorKind;
+use burncloud_node_runtime::AcceleratorKind;
 
 use crate::platform::{MetricsError, RawAcceleratorMetrics};
 use tokio::process::Command;

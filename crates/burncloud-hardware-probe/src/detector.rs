@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 
 use async_trait::async_trait;
-use burncloud_node_contracts::{
+use burncloud_node_runtime::{
     AcceleratorProfile, HardwareProbe, HardwareProbeError, HardwareProfile,
 };
 
@@ -14,8 +14,8 @@ pub struct RealHardwareProbe {
 #[derive(Debug, Clone)]
 struct CachedCpuIdentity {
     threads: usize,
-    brand: Option<String>,
-    model: Option<String>,
+    _brand: Option<String>,
+    _model: Option<String>,
 }
 
 impl RealHardwareProbe {
@@ -35,12 +35,15 @@ impl Default for RealHardwareProbe {
 #[async_trait]
 impl HardwareProbe for RealHardwareProbe {
     async fn inspect(&self) -> Result<HardwareProfile, HardwareProbeError> {
+        // 这里直接使用 BurnCloud 权威运行时合约。
+        // 平台采集结果只映射为稳定的机器级事实。
+        // CPU 品牌和型号保留在内部，不扩展公共 HardwareProfile。
         if self.cached_cpu.get().is_none() {
             let raw_cpu = platform::collect_cpu().await.map_err(map_detect_error)?;
             let identity = CachedCpuIdentity {
                 threads: raw_cpu.cpu_threads,
-                brand: normalize_cpu_brand(raw_cpu.cpu_brand.as_deref().unwrap_or("")),
-                model: raw_cpu.cpu_model,
+                _brand: normalize_cpu_brand(raw_cpu.cpu_brand.as_deref().unwrap_or("")),
+                _model: raw_cpu.cpu_model,
             };
             let _ = self.cached_cpu.set(identity);
         }
@@ -54,8 +57,6 @@ impl HardwareProbe for RealHardwareProbe {
 
         Ok(HardwareProfile {
             cpu_threads: cpu.threads,
-            cpu_brand: cpu.brand.clone(),
-            cpu_model: cpu.model.clone(),
             memory_bytes,
             disk_available_bytes,
             accelerators: raw_accelerators
@@ -94,7 +95,7 @@ fn map_detect_error(error: DetectError) -> HardwareProbeError {
 #[cfg(test)]
 mod tests {
     use super::{map_detect_error, normalize_cpu_brand, RealHardwareProbe};
-    use burncloud_node_contracts::{HardwareProbe, HardwareProbeError};
+    use burncloud_node_runtime::{HardwareProbe, HardwareProbeError};
 
     fn assert_hardware_probe<T: HardwareProbe>() {}
 

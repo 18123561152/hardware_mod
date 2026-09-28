@@ -26,12 +26,33 @@ pub(crate) async fn collect_disk() -> Result<u64, DetectError> {
 }
 
 pub(crate) async fn collect_vendor_accelerators() -> Result<Vec<RawAccelerator>, DetectError> {
-    let output = match powershell(GPU_QUERY).await {
-        Ok(output) => output,
-        Err(DetectError::Command { .. }) => return Ok(Vec::new()),
-        Err(error) => return Err(error),
-    };
-    parse_video_controllers(&output)
+    parse_video_controllers(&powershell(GPU_QUERY).await?)
+}
+
+pub(crate) async fn has_nvidia_hardware() -> Result<bool, DetectError> {
+    parse_has_nvidia(&powershell(GPU_QUERY).await?)
+}
+
+fn parse_has_nvidia(input: &str) -> Result<bool, DetectError> {
+    for (row, line) in input.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields: Vec<_> = line.splitn(3, '|').map(str::trim).collect();
+        if fields.len() != 3 {
+            return Err(DetectError::Parse(format!(
+                "Windows GPU row {} is malformed",
+                row + 1
+            )));
+        }
+        if format!("{} {}", fields[0], fields[1])
+            .to_ascii_lowercase()
+            .contains("nvidia")
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn parse_cpu_output(input: &str) -> Result<RawCpuIdentity, DetectError> {
@@ -49,7 +70,7 @@ fn parse_cpu_output(input: &str) -> Result<RawCpuIdentity, DetectError> {
 fn classify_gpu(
     name: &str,
     compatibility: &str,
-) -> Option<burncloud_node_contracts::AcceleratorKind> {
+) -> Option<burncloud_node_runtime::AcceleratorKind> {
     let value = format!("{name} {compatibility}").to_ascii_lowercase();
     if value.contains("nvidia") {
         None
@@ -57,9 +78,9 @@ fn classify_gpu(
         || value.contains("advanced micro devices")
         || value.contains("radeon")
     {
-        Some(burncloud_node_contracts::AcceleratorKind::Amd)
+        Some(burncloud_node_runtime::AcceleratorKind::Amd)
     } else if value.contains("apple") {
-        Some(burncloud_node_contracts::AcceleratorKind::Apple)
+        Some(burncloud_node_runtime::AcceleratorKind::Apple)
     } else {
         None
     }
@@ -101,8 +122,11 @@ fn parse_video_controllers(input: &str) -> Result<Vec<RawAccelerator>, DetectErr
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_cpu_output, parse_video_controllers, CPU_QUERY, DISK_QUERY, MEMORY_QUERY};
-    use burncloud_node_contracts::AcceleratorKind;
+    use super::{
+        parse_cpu_output, parse_has_nvidia, parse_video_controllers, CPU_QUERY, DISK_QUERY,
+        MEMORY_QUERY,
+    };
+    use burncloud_node_runtime::AcceleratorKind;
 
     #[test]
     fn uses_cim_and_never_wmic_for_windows_detection() {
@@ -129,5 +153,11 @@ mod tests {
         let gpus = parse_video_controllers("Apple M2|Apple|0\n").unwrap();
         assert_eq!(gpus[0].kind, AcceleratorKind::Apple);
         assert_eq!(gpus[0].memory_bytes, None);
+    }
+
+    #[test]
+    fn identifies_nvidia_hardware_separately_from_vendor_collection() {
+        assert!(parse_has_nvidia("NVIDIA RTX|NVIDIA|0\n").unwrap());
+        assert!(!parse_has_nvidia("Radeon|AMD|0\n").unwrap());
     }
 }

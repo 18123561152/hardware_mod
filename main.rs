@@ -1,10 +1,11 @@
 use std::time::Duration;
 
 use burncloud_hardware_probe::RealHardwareProbe;
-use burncloud_metrics_probe::RealMetricsProbe;
-use burncloud_node_contracts::{
-    AcceleratorKind, AcceleratorMetrics, AcceleratorProfile, HardwareProbe, HardwareProbeError,
-    HardwareProfile, MetricsProbeError, RuntimeMetrics, RuntimeMetricsProbe,
+use burncloud_metrics_probe::{
+    AcceleratorMetrics, MetricsProbeError, RealMetricsProbe, RuntimeMetrics, RuntimeMetricsProbe,
+};
+use burncloud_node_runtime::{
+    AcceleratorKind, AcceleratorProfile, HardwareProbe, HardwareProbeError, HardwareProfile,
 };
 
 fn assert_hardware_probe<T: HardwareProbe>() {}
@@ -14,8 +15,6 @@ fn assert_metrics_probe<T: RuntimeMetricsProbe>() {}
 fn verify_contract_types() {
     let hardware_profile = HardwareProfile {
         cpu_threads: 8,
-        cpu_brand: Some("AMD".into()),
-        cpu_model: Some("Ryzen test CPU".into()),
         memory_bytes: 16 * 1024 * 1024 * 1024,
         disk_available_bytes: 256 * 1024 * 1024 * 1024,
         accelerators: vec![
@@ -75,15 +74,6 @@ fn verify_contract_types() {
 fn verify_hardware_profile(profile: &HardwareProfile) {
     assert!(profile.cpu_threads > 0, "CPU thread count must be positive");
     assert!(profile.memory_bytes > 0, "total memory must be positive");
-    if let Some(brand) = &profile.cpu_brand {
-        assert!(matches!(
-            brand.as_str(),
-            "Intel" | "AMD" | "Apple" | "Unknown"
-        ));
-    }
-    if let Some(model) = &profile.cpu_model {
-        assert!(!model.trim().is_empty(), "CPU model must not be empty");
-    }
 
     for accelerator in &profile.accelerators {
         assert!(
@@ -122,10 +112,6 @@ async fn verify_hardware_probe() {
                     second_profile.memory_bytes,
                     second_profile.disk_available_bytes,
                     second_profile.accelerators.len()
-                );
-                println!(
-                    "CPU identity: brand={:?}, model={:?}",
-                    second_profile.cpu_brand, second_profile.cpu_model
                 );
             }
             (

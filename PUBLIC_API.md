@@ -1,44 +1,31 @@
 # Public API
 
-This document describes the public Rust API exposed by the independent
-hardware probe workspace.
+## Canonical Static Hardware Contract
 
-## `burncloud-node-contracts`
+`burncloud-hardware-probe` does not define or re-export a second hardware
+contract. `RealHardwareProbe` directly implements these types from the pinned
+`burncloud-node-runtime` dependency:
 
-### `HardwareProbe`
-
-The single public contract for inspecting local machine facts.
+```rust
+use burncloud_node_runtime::{
+    AcceleratorKind, AcceleratorProfile, HardwareProbe, HardwareProbeError,
+    HardwareProfile,
+};
+```
 
 ```rust
 #[async_trait]
 pub trait HardwareProbe: Send + Sync {
     async fn inspect(&self) -> Result<HardwareProfile, HardwareProbeError>;
 }
-```
 
-### `HardwareProfile`
-
-```rust
 pub struct HardwareProfile {
     pub cpu_threads: usize,
-    pub cpu_brand: Option<String>,
-    pub cpu_model: Option<String>,
     pub memory_bytes: u64,
     pub disk_available_bytes: u64,
     pub accelerators: Vec<AcceleratorProfile>,
 }
-```
 
-`cpu_brand` is normalized to `Intel`, `AMD`, `Apple`, or `Unknown` when
-available. Both CPU identity fields are optional and remain `None` when the
-platform cannot measure them. `HardwareProfile` also implements `Default`.
-
-All sizes are measured in bytes. These are machine facts only; they do not
-express resource requirements or runtime compatibility decisions.
-
-### `AcceleratorProfile`
-
-```rust
 pub struct AcceleratorProfile {
     pub kind: AcceleratorKind,
     pub name: String,
@@ -46,37 +33,11 @@ pub struct AcceleratorProfile {
 }
 ```
 
-`memory_bytes` is `None` when accelerator memory cannot be measured. AMD and
-Apple devices are collected on a best-effort basis on Windows, Linux, and
-macOS; NVIDIA devices continue to use `nvidia-smi`.
-
-### `AcceleratorKind`
-
-```rust
-pub enum AcceleratorKind {
-    Nvidia,
-    Amd,
-    Apple,
-    Other,
-}
-```
-
-### `HardwareProbeError`
-
-```rust
-pub enum HardwareProbeError {
-    DetectionFailed(String),
-}
-```
-
-All public inspection failures are reported through this error type.
-
-## `burncloud-hardware-probe`
+`HardwareProfile` has no CPU brand or CPU model fields. Those values may be
+collected privately by a platform detector, but need a separate BurnCloud
+contract-change review before they can become public output.
 
 ### `RealHardwareProbe`
-
-The production implementation of
-`burncloud_node_contracts::HardwareProbe`.
 
 ```rust
 pub struct RealHardwareProbe;
@@ -86,55 +47,32 @@ impl RealHardwareProbe {
 }
 
 impl Default for RealHardwareProbe;
-impl HardwareProbe for RealHardwareProbe;
+impl burncloud_node_runtime::HardwareProbe for RealHardwareProbe;
 ```
 
-Example:
+The probe reports static machine facts only. NVIDIA devices are inspected with
+`nvidia-smi`; when platform discovery confirms NVIDIA hardware but the command
+cannot inspect it, `inspect()` returns the canonical
+`HardwareProbeError::DetectionFailed` instead of fabricating an empty list.
+
+## Experimental Metrics API
+
+`burncloud-metrics-probe` exposes a local research API that is not part of the
+accepted BurnCloud contract:
 
 ```rust
-use burncloud_hardware_probe::RealHardwareProbe;
-use burncloud_node_contracts::HardwareProbe;
-
-let probe = RealHardwareProbe::new();
-let profile = probe.inspect().await?;
-```
-
-## Non-public implementation details
-
-The following are intentionally not public API: platform adapters, command
-execution, NVIDIA CSV parsing, raw probe types, internal detection errors, and
-static-fact caching. Consumers must depend only on `HardwareProbe` and its
-contract types.
-
-## `burncloud-node-contracts::metrics`
-
-Dynamic runtime metrics are deliberately separate from `HardwareProbe` and
-`HardwareProfile`.
-
-### `RuntimeMetricsProbe`
-
-```rust
-#[async_trait]
 pub trait RuntimeMetricsProbe: Send + Sync {
     async fn sample(&self) -> Result<RuntimeMetrics, MetricsProbeError>;
 }
-```
 
-### `RuntimeMetrics`
-
-```rust
 pub struct RuntimeMetrics {
     pub cpu_usage_percent: Option<f32>,
     pub memory_available_bytes: Option<u64>,
     pub accelerators: Vec<AcceleratorMetrics>,
 }
-```
 
-### `AcceleratorMetrics`
-
-```rust
 pub struct AcceleratorMetrics {
-    pub kind: AcceleratorKind,
+    pub kind: burncloud_node_runtime::AcceleratorKind,
     pub index: Option<u32>,
     pub name: String,
     pub memory_total_bytes: Option<u64>,
@@ -144,38 +82,12 @@ pub struct AcceleratorMetrics {
 }
 ```
 
-Unavailable dynamic values are represented by `None`; the implementation does
-not replace unavailable measurements with fabricated zero values.
+`RealMetricsProbe` takes a fresh sample on every call. Unavailable values are
+represented by `None`; it never fabricates zero values. This API requires a
+separate BurnCloud contract review before any integration.
 
-### `MetricsProbeError`
+## Private Details
 
-```rust
-pub enum MetricsProbeError {
-    SamplingFailed(String),
-}
-```
-
-## `burncloud-metrics-probe`
-
-### `RealMetricsProbe`
-
-The production implementation of
-`burncloud_node_contracts::RuntimeMetricsProbe`. It performs a fresh sample on
-every call and does not depend on `burncloud-hardware-probe`.
-
-```rust
-pub struct RealMetricsProbe;
-
-impl RealMetricsProbe {
-    pub fn new() -> Self;
-    pub fn with_sample_interval(self, interval: std::time::Duration) -> Self;
-}
-
-impl Default for RealMetricsProbe;
-impl RuntimeMetricsProbe for RealMetricsProbe;
-```
-
-The default CPU sampling interval is 200 milliseconds. CPU usage uses two
-platform samples; RAM availability and NVIDIA, AMD, and Apple GPU metrics are
-sampled fresh where the operating system exposes them. Unsupported or
-unmeasurable dynamic fields are represented by `None`.
+Platform adapters, raw structs, command execution, parser functions, internal
+errors, CPU identity cache, and vendor-specific tooling are intentionally not
+public API.

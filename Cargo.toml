@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/burncloud-node-contracts",
     "crates/burncloud-hardware-probe",
     "crates/burncloud-metrics-probe",
 ]
@@ -19,5 +18,5 @@ path = "main.rs"
 [dependencies]
 burncloud-hardware-probe = { path = "crates/burncloud-hardware-probe" }
 burncloud-metrics-probe = { path = "crates/burncloud-metrics-probe" }
-burncloud-node-contracts = { path = "crates/burncloud-node-contracts" }
+burncloud-node-runtime = { git = "https://github.com/burncloud/burncloud.git", rev = "731ac0d92058dc45d7c8e3e0a71c04cb037cb528" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

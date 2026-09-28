@@ -36,17 +36,33 @@ pub(crate) async fn collect_disk() -> Result<u64, DetectError> {
 }
 
 pub(crate) async fn collect_vendor_accelerators() -> Result<Vec<RawAccelerator>, DetectError> {
-    let output = match tokio::process::Command::new("system_profiler")
+    parse_spdisplays(&system_profiler_displays().await?)
+}
+
+pub(crate) async fn has_nvidia_hardware() -> Result<bool, DetectError> {
+    Ok(system_profiler_displays()
+        .await?
+        .to_ascii_lowercase()
+        .contains("nvidia"))
+}
+
+async fn system_profiler_displays() -> Result<String, DetectError> {
+    let output = tokio::process::Command::new("system_profiler")
         .args(["SPDisplaysDataType"])
         .output()
         .await
-    {
-        Ok(output) if output.status.success() => output,
-        Ok(_) | Err(_) => return Ok(Vec::new()),
-    };
-    let text = String::from_utf8(output.stdout)
-        .map_err(|error| DetectError::Parse(format!("invalid system_profiler UTF-8: {error}")))?;
-    parse_spdisplays(&text)
+        .map_err(|error| DetectError::Command {
+            program: "system_profiler".into(),
+            detail: error.to_string(),
+        })?;
+    if !output.status.success() {
+        return Err(DetectError::Command {
+            program: "system_profiler".into(),
+            detail: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        });
+    }
+    String::from_utf8(output.stdout)
+        .map_err(|error| DetectError::Parse(format!("invalid system_profiler UTF-8: {error}")))
 }
 
 pub(crate) fn parse_cpu_brand_string(raw: &str) -> (Option<String>, Option<String>) {
@@ -119,9 +135,9 @@ fn parse_spdisplays(input: &str) -> Result<Vec<RawAccelerator>, DetectError> {
         let Some(name) = name else { return Ok(()) };
         let combined = format!("{name} {vendor_value}").to_ascii_lowercase();
         let kind = if combined.contains("amd") || combined.contains("radeon") {
-            Some(burncloud_node_contracts::AcceleratorKind::Amd)
+            Some(burncloud_node_runtime::AcceleratorKind::Amd)
         } else if combined.contains("apple") {
-            Some(burncloud_node_contracts::AcceleratorKind::Apple)
+            Some(burncloud_node_runtime::AcceleratorKind::Apple)
         } else {
             None
         };
@@ -156,7 +172,7 @@ fn parse_spdisplays(input: &str) -> Result<Vec<RawAccelerator>, DetectError> {
 #[cfg(test)]
 mod tests {
     use super::{parse_cpu_brand_string, parse_spdisplays};
-    use burncloud_node_contracts::AcceleratorKind;
+    use burncloud_node_runtime::AcceleratorKind;
 
     #[test]
     fn parses_apple_silicon_and_intel_cpu_names() {

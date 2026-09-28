@@ -37,7 +37,7 @@ pub(crate) fn parse_nvidia_smi_csv(input: &str) -> Result<Vec<RawAccelerator>, D
         };
 
         accelerators.push(RawAccelerator {
-            kind: burncloud_node_contracts::AcceleratorKind::Nvidia,
+            kind: burncloud_node_runtime::AcceleratorKind::Nvidia,
             name: fields[0].to_string(),
             memory_bytes,
         });

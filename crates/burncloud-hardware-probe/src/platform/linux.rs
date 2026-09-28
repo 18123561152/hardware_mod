@@ -50,8 +50,8 @@ pub(crate) async fn collect_vendor_accelerators() -> Result<Vec<RawAccelerator>,
             Err(_) => continue,
         };
         let kind = match vendor.as_str() {
-            "0x1002" => burncloud_node_contracts::AcceleratorKind::Amd,
-            "0x106b" => burncloud_node_contracts::AcceleratorKind::Apple,
+            "0x1002" => burncloud_node_runtime::AcceleratorKind::Amd,
+            "0x106b" => burncloud_node_runtime::AcceleratorKind::Apple,
             _ => continue,
         };
         let product = fs::read_to_string(device.join("product_name"))
@@ -71,6 +71,26 @@ pub(crate) async fn collect_vendor_accelerators() -> Result<Vec<RawAccelerator>,
         });
     }
     Ok(result)
+}
+
+pub(crate) async fn has_nvidia_hardware() -> Result<bool, DetectError> {
+    let entries = fs::read_dir("/sys/class/drm").map_err(|error| DetectError::Command {
+        program: "/sys/class/drm".into(),
+        detail: error.to_string(),
+    })?;
+    for entry in entries.flatten() {
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        if !file_name.starts_with("card") || file_name.contains('-') {
+            continue;
+        }
+        let vendor = fs::read_to_string(entry.path().join("device/vendor"));
+        if let Ok(vendor) = vendor {
+            if vendor.trim().eq_ignore_ascii_case("0x10de") {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn parse_cpuinfo(input: &str) -> (Option<String>, Option<String>) {

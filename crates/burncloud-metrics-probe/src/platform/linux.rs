@@ -1,6 +1,6 @@
 use std::fs;
 
-use burncloud_node_contracts::AcceleratorKind;
+use burncloud_node_runtime::AcceleratorKind;
 
 use super::{parse_u64, CpuSnapshot, MetricsError, RawAcceleratorMetrics};
 

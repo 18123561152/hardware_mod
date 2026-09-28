@@ -1,11 +1,10 @@
 use std::time::Duration;
 
-use async_trait::async_trait;
-use burncloud_node_contracts::{
+use crate::{
+    platform::{self, compute_usage, MetricsError},
     AcceleratorMetrics, MetricsProbeError, RuntimeMetrics, RuntimeMetricsProbe,
 };
-
-use crate::platform::{self, compute_usage, MetricsError};
+use async_trait::async_trait;
 
 pub struct RealMetricsProbe {
     sample_interval: Duration,
@@ -77,7 +76,7 @@ mod tests {
     use std::time::Duration;
 
     use super::RealMetricsProbe;
-    use burncloud_node_contracts::RuntimeMetricsProbe;
+    use crate::RuntimeMetricsProbe;
 
     fn assert_probe<T: RuntimeMetricsProbe>() {}
 

@@ -1,4 +1,4 @@
-use burncloud_node_contracts::AcceleratorKind;
+use burncloud_node_runtime::AcceleratorKind;
 
 use super::{parse_u64, CpuSnapshot, MetricsError, RawAcceleratorMetrics};
 
@@ -234,7 +234,7 @@ fn parse_vm_stat_available(input: &str) -> Result<Option<u64>, MetricsError> {
 #[cfg(test)]
 mod tests {
     use super::{parse_cp_time, parse_gpu_utilization, parse_spdisplays, parse_vm_stat_available};
-    use burncloud_node_contracts::AcceleratorKind;
+    use burncloud_node_runtime::AcceleratorKind;
 
     #[test]
     fn parses_macos_cpu_and_vm_stat() {

@@ -1,5 +1,4 @@
-use burncloud_metrics_probe::RealMetricsProbe;
-use burncloud_node_contracts::RuntimeMetricsProbe;
+use burncloud_metrics_probe::{RealMetricsProbe, RuntimeMetricsProbe};
 
 fn assert_probe<T: RuntimeMetricsProbe>() {}
 

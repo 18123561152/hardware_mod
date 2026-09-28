@@ -1,4 +1,4 @@
-use burncloud_node_contracts::AcceleratorKind;
+use burncloud_node_runtime::AcceleratorKind;
 
 use super::{parse_f64, parse_u64, CpuSnapshot, MetricsError, RawAcceleratorMetrics};
 
@@ -142,7 +142,7 @@ fn find_matching_counter(name: &str, counters: &str) -> Result<Option<f32>, Metr
 #[cfg(test)]
 mod tests {
     use super::{parse_cpu_counters, parse_gpu_adapters, sample_memory_available};
-    use burncloud_node_contracts::AcceleratorKind;
+    use burncloud_node_runtime::AcceleratorKind;
 
     #[test]
     fn parses_windows_cpu_counter_output() {

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use burncloud_node_contracts::AcceleratorKind;
+use burncloud_node_runtime::AcceleratorKind;
 
 #[cfg(target_os = "linux")]
 mod linux;

@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 async-trait = "0.1"
-burncloud-node-contracts = { path = "../burncloud-node-contracts" }
+burncloud-node-runtime = { git = "https://github.com/burncloud/burncloud.git", rev = "731ac0d92058dc45d7c8e3e0a71c04cb037cb528" }
 tokio = { version = "1", features = ["process", "rt", "macros"] }
 
 [dev-dependencies]

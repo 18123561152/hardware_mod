@@ -1,5 +1,5 @@
 use burncloud_hardware_probe::RealHardwareProbe;
-use burncloud_node_contracts::{HardwareProbe, HardwareProfile};
+use burncloud_node_runtime::{HardwareProbe, HardwareProfile};
 
 fn assert_probe<T: HardwareProbe>() {}
 
